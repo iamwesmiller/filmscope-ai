@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-// CORRECTED: Using a direct ESM import from a CDN for the interactive preview.
-// IMPORTANT: This line MUST be changed back before deploying to Vercel. See instructions.
-import { createClient } from '@supabase/supabase-js';
+// This standard import is for production builds (like on Vercel).
+// The build process will find the package in your node_modules folder.
+import { createClient } from '@supabase/supabase-js'; 
 import { 
     ChevronLeft, ChevronRight, Search, Target, Bot, Zap, Film, BarChart2, Clapperboard, 
     Megaphone, Calendar, LayoutDashboard, Settings, Plus, Trash2, Edit, Copy, MoreVertical, 
@@ -20,7 +20,7 @@ const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 const geminiApiKey = process.env.REACT_APP_GEMINI_API_KEY;
 
-// Initialize Supabase client. This requires valid keys to function.
+// Initialize Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // --- GEMINI API HELPER ---
@@ -83,17 +83,104 @@ const PLATFORMS = {
 };
 
 
-// --- UI COMPONENTS ---
+// --- UI COMPONENTS (TOP LEVEL) ---
+// All UI components are defined at the top level to follow the Rules of Hooks.
+
 const AppCard = ({ children, className = '', ...props }) => ( <div className={`bg-gradient-to-br from-zinc-900/70 to-zinc-950/70 backdrop-blur-md border border-zinc-800 rounded-xl shadow-2xl transition-colors duration-300 hover:border-purple-500/50 ${className}`} {...props}> {children} </div> );
 const SectionTitle = ({ icon, children, ...props }) => { const Icon = icon; return ( <h2 className="text-2xl font-semibold text-zinc-100 mb-6 flex items-center gap-3 font-poppins" {...props}> <Icon className="w-7 h-7 text-purple-400" /> <span>{children}</span> </h2> ); };
 const AppButton = ({ children, onClick, variant = 'primary', size = 'md', className = '', disabled = false, icon: Icon, type = "button", as: Component = 'button', ...props }) => { const baseStyle = "inline-flex items-center justify-center font-semibold rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-950 transition-all duration-200 ease-in-out"; const sizeStyles = { sm: "px-3 py-1.5 text-xs", md: "px-4 py-2 text-sm", lg: "px-5 py-2.5 text-base" }; const variantStyles = { primary: "bg-purple-600 hover:bg-purple-500 text-white focus:ring-purple-500 border border-transparent", secondary: "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 focus:ring-zinc-500 border border-zinc-700", danger: "bg-red-600 hover:bg-red-700 text-white focus:ring-red-500 border border-transparent", outline: "bg-transparent border border-zinc-700 hover:bg-zinc-800 text-zinc-300 focus:ring-zinc-600", ghost: "bg-transparent hover:bg-zinc-800 text-zinc-300 focus:ring-600" }; const disabledStyle = disabled ? "opacity-50 cursor-not-allowed" : ""; return ( <Component type={Component === 'button' ? type : undefined} onClick={onClick} disabled={disabled} className={`${baseStyle} ${sizeStyles[size]} ${variantStyles[variant]} ${disabledStyle} ${className}`} {...props}> {Icon && <Icon size={size === 'sm' ? 16 : 18} className={children ? "mr-2" : ""} />} {children} </Component> ); };
 const StatCard = ({ title, value, icon, color }) => { const Icon = icon; return (<AppCard className="p-4"><div className="flex items-center"><div className={`p-3 rounded-lg mr-4 ${color}`}><Icon className="w-6 h-6 text-white" /></div><div><p className="text-sm text-zinc-400">{title}</p><p className="text-2xl font-bold text-white font-poppins">{value}</p></div></div></AppCard>); };
 const ConfidenceBar = ({ value }) => ( <div><div className="flex justify-between items-center mb-1"><span className="text-sm font-semibold text-zinc-300">Confidence Score</span><span className="text-sm font-bold text-purple-400">{value}%</span></div><div className="w-full bg-zinc-800 rounded-full h-2.5"><div className="bg-purple-500 h-2.5 rounded-full" style={{ width: `${value}%` }}></div></div></div> );
-const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText = "Confirm" }) => { if (!isOpen) return null; return ( <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"> <AppCard className="p-8 max-w-md w-full animate-fade-in-up"> <h3 className="text-xl font-bold text-white mb-4 font-poppins">{title}</h3> <p className="text-zinc-300 mb-6">{message}</p> <div className="flex justify-end gap-4"> <AppButton onClick={onCancel} variant="secondary">Cancel</AppButton> <AppButton onClick={onConfirm} variant="danger">{confirmText}</AppButton> </div> </AppCard> </div> ); };
-const Notification = ({ message, type, onDismiss }) => { if (!message) return null; const icons = { success: CheckCircle, error: XCircle, info: Info }; const Icon = icons[type]; useEffect(() => { const timer = setTimeout(onDismiss, 4000); return () => clearTimeout(timer); }, [onDismiss]); return ( <div className="fixed top-20 right-8 z-50 animate-fade-in-down"> <AppCard className={`flex items-center p-4 rounded-xl border-l-4 ${type === 'success' ? 'border-green-400' : type === 'error' ? 'border-red-400' : 'border-blue-400'}`}> <Icon className={`w-6 h-6 mr-3 ${type === 'success' ? 'text-green-400' : type === 'error' ? 'text-red-400' : 'text-blue-400'}`} /> <p className="text-white">{message}</p> <button onClick={onDismiss} className="ml-4 text-zinc-400 hover:text-white"><XCircle size={18} /></button> </AppCard> </div> ); };
 const AppInput = ({...props}) => <input {...props} className="w-full p-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors" />;
 const AppTextarea = ({...props}) => <textarea {...props} className="w-full p-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors resize-y"/>;
 const AppSelect = ({...props}) => <select {...props} className="w-full p-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"/>;
+
+const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel, confirmText = "Confirm" }) => { 
+    if (!isOpen) return null; 
+    return ( <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"> <AppCard className="p-8 max-w-md w-full animate-fade-in-up"> <h3 className="text-xl font-bold text-white mb-4 font-poppins">{title}</h3> <p className="text-zinc-300 mb-6">{message}</p> <div className="flex justify-end gap-4"> <AppButton onClick={onCancel} variant="secondary">Cancel</AppButton> <AppButton onClick={onConfirm} variant="danger">{confirmText}</AppButton> </div> </AppCard> </div> ); 
+};
+
+// CORRECTED: Fixed a subtle syntax error in the JSX template literal.
+const Notification = ({ message, type, onDismiss }) => { 
+    useEffect(() => { 
+        if(message) {
+            const timer = setTimeout(onDismiss, 4000); 
+            return () => clearTimeout(timer); 
+        }
+    }, [message, onDismiss]);
+
+    if (!message) return null; 
+
+    const icons = { success: CheckCircle, error: XCircle, info: Info }; 
+    const Icon = icons[type];
+    
+    const cardClasses = `flex items-center p-4 rounded-xl border-l-4 ${type === 'success' ? 'border-green-400' : type === 'error' ? 'border-red-400' : 'border-blue-400'}`;
+    const iconClasses = `w-6 h-6 mr-3 ${type === 'success' ? 'text-green-400' : type === 'error' ? 'text-red-400' : 'text-blue-400'}`;
+
+    return ( 
+        <div className="fixed top-20 right-8 z-50 animate-fade-in-down"> 
+            <AppCard className={cardClasses}> 
+                <Icon className={iconClasses} /> 
+                <p className="text-white">{message}</p> 
+                <button onClick={onDismiss} className="ml-4 text-zinc-400 hover:text-white">
+                    <XCircle size={18} />
+                </button> 
+            </AppCard> 
+        </div> 
+    ); 
+};
+
+const CampaignEditModal = ({ isOpen, onClose, onSave, campaignData, setNotification }) => {
+    const [campaign, setCampaign] = useState(campaignData); 
+
+    useEffect(() => { 
+        setCampaign(campaignData); 
+    }, [campaignData]);
+    
+    if (!isOpen || !campaignData) return null; 
+
+    const handleInputChange = e => { const {name, value} = e.target; setCampaign(p => ({...p, [name]: value})); }; 
+    const handleSave = () => { if (!campaign.title || !campaign.content) { setNotification({type: 'error', message: 'Title and Content are required.'}); return; } onSave(campaign); }; 
+
+    return (<div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"><AppCard className="p-8 max-w-2xl w-full animate-fade-in-up"><div className="flex justify-between items-start mb-6"><h3 className="text-2xl font-bold text-white font-poppins">{campaign.id ? 'Edit Campaign' : 'Create New Campaign'}</h3><AppButton onClick={onClose} variant="secondary" icon={XCircle} className="!p-2"/></div><div className="space-y-4"><AppInput type="text" name="title" value={campaign.title} onChange={handleInputChange} placeholder="Campaign Title"/><AppTextarea name="content" value={campaign.content} onChange={handleInputChange} placeholder="Campaign Content..." rows="5"></AppTextarea><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><AppSelect name="platform" value={campaign.platform} onChange={handleInputChange}>{Object.keys(PLATFORMS).map(p=><option key={p} value={p}>{PLATFORMS[p].name}</option>)}</AppSelect><AppSelect name="type" value={campaign.type} onChange={handleInputChange}><option>Visual</option><option>Video</option><option>Text</option><option>Community</option></AppSelect></div></div><div className="flex justify-end gap-3 mt-6"><AppButton onClick={handleSave} variant="primary">Save</AppButton></div></AppCard></div>);
+};
+
+const DashboardView = ({ campaigns, handleCreateNew, handleEdit, handleDuplicate, handleDelete }) => (
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="xl:col-span-2 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <StatCard title="Total Campaigns" value={campaigns.length} icon={Briefcase} color="bg-purple-500"/>
+              <StatCard title="Active" value={campaigns.filter(c=>c.status==='Active').length} icon={TrendingUp} color="bg-green-500"/>
+              <StatCard title="Scheduled" value={campaigns.filter(c=>c.status==='Scheduled').length} icon={Clock} color="bg-blue-500"/>
+              <StatCard title="Drafts" value={campaigns.filter(c=>c.status==='Draft').length} icon={Edit} color="bg-yellow-500"/>
+          </div>
+           <AppCard className="p-6">
+               <div className="flex justify-between items-center mb-4"> <h3 className="font-bold text-lg text-white font-poppins">All Campaigns</h3> <AppButton onClick={handleCreateNew} icon={Plus}>Create Campaign</AppButton> </div>
+               <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                 {campaigns.map(campaign => (
+                     <div key={campaign.id} className="bg-zinc-800/50 p-3 rounded-lg flex items-center justify-between">
+                       <div className="flex items-center gap-3">
+                          <span className={`text-2xl`}>{PLATFORMS[campaign.platform]?.icon || '❓'}</span>
+                          <div>
+                               <p className="font-semibold text-white">{campaign.title}</p>
+                               <p className="text-sm text-zinc-300">{campaign.type} - <span className={`px-2 py-0.5 text-xs rounded-full ${ campaign.status === 'Active' ? 'bg-green-500/20 text-green-300' : campaign.status === 'Scheduled' ? 'bg-blue-500/20 text-blue-300' : campaign.status === 'Draft' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-gray-500/20 text-gray-300' }`}>{campaign.status}</span></p>
+                          </div>
+                       </div>
+                       <div className="flex items-center gap-2"> 
+                           <AppButton onClick={() => handleEdit(campaign)} variant="secondary" icon={Edit} className="!p-2"/> 
+                           <AppButton onClick={() => handleDuplicate(campaign)} variant="secondary" icon={Copy} className="!p-2"/> 
+                           <AppButton onClick={() => handleDelete(campaign)} variant="danger" icon={Trash2} className="!p-2"/> 
+                       </div>
+                     </div>
+                 ))}
+               </div>
+            </AppCard>
+      </div>
+      <AppCard className="p-6">
+        <h3 className="font-bold text-lg text-white mb-4 flex items-center font-poppins"><Bot className="mr-2"/> AI Optimization Engine</h3>
+      </AppCard>
+    </div>
+);
 
 // --- FEATURE COMPONENTS ---
 
@@ -140,7 +227,7 @@ const AudienceAnalysis = ({ filmData, setFilmData, setNotification }) => {
     setTimeout(() => setCopied(null), 2000);
   };
 
-  useEffect(() => { if(filmData.demographic === 'I need help identifying' && filmData.title) { handleAnalyze(); } else { setAnalysis(null); } }, [filmData.demographic]);
+  useEffect(() => { if(filmData.demographic === 'I need help identifying' && filmData.title) { handleAnalyze(); } else { setAnalysis(null); } }, [filmData.demographic, filmData.title]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -284,45 +371,6 @@ const CampaignManager = ({ campaigns, setCampaigns, setNotification, setActiveTa
         setEditingCampaign(null); 
     };
     
-    const DashboardView = () => (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <StatCard title="Total Campaigns" value={campaigns.length} icon={Briefcase} color="bg-purple-500"/>
-                  <StatCard title="Active" value={campaigns.filter(c=>c.status==='Active').length} icon={TrendingUp} color="bg-green-500"/>
-                  <StatCard title="Scheduled" value={campaigns.filter(c=>c.status==='Scheduled').length} icon={Clock} color="bg-blue-500"/>
-                  <StatCard title="Drafts" value={campaigns.filter(c=>c.status==='Draft').length} icon={Edit} color="bg-yellow-500"/>
-              </div>
-               <AppCard className="p-6">
-                   <div className="flex justify-between items-center mb-4"> <h3 className="font-bold text-lg text-white font-poppins">All Campaigns</h3> <AppButton onClick={handleCreateNew} icon={Plus}>Create Campaign</AppButton> </div>
-                   <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                     {campaigns.map(campaign => (
-                         <div key={campaign.id} className="bg-zinc-800/50 p-3 rounded-lg flex items-center justify-between">
-                           <div className="flex items-center gap-3">
-                              <span className={`text-2xl`}>{PLATFORMS[campaign.platform]?.icon || '❓'}</span>
-                              <div>
-                                   <p className="font-semibold text-white">{campaign.title}</p>
-                                   <p className="text-sm text-zinc-300">{campaign.type} - <span className={`px-2 py-0.5 text-xs rounded-full ${ campaign.status === 'Active' ? 'bg-green-500/20 text-green-300' : campaign.status === 'Scheduled' ? 'bg-blue-500/20 text-blue-300' : campaign.status === 'Draft' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-gray-500/20 text-gray-300' }`}>{campaign.status}</span></p>
-                              </div>
-                           </div>
-                           <div className="flex items-center gap-2"> 
-                               <AppButton onClick={() => handleEdit(campaign)} variant="secondary" icon={Edit} className="!p-2"/> 
-                               <AppButton onClick={() => handleDuplicate(campaign)} variant="secondary" icon={Copy} className="!p-2"/> 
-                               <AppButton onClick={() => handleDelete(campaign)} variant="danger" icon={Trash2} className="!p-2"/> 
-                           </div>
-                         </div>
-                     ))}
-                   </div>
-                </AppCard>
-          </div>
-          <AppCard className="p-6">
-            <h3 className="font-bold text-lg text-white mb-4 flex items-center font-poppins"><Bot className="mr-2"/> AI Optimization Engine</h3>
-          </AppCard>
-        </div>
-      );
-    const CampaignEditModal = ({ isOpen, onClose, onSave, campaignData, setNotification }) => { if (!isOpen || !campaignData) return null; const [campaign, setCampaign] = useState(campaignData); useEffect(() => { setCampaign(campaignData); }, [campaignData]); const handleInputChange = e => { const {name, value} = e.target; setCampaign(p => ({...p, [name]: value})); }; const handleSave = () => { if (!campaign.title || !campaign.content) { setNotification({type: 'error', message: 'Title and Content are required.'}); return; } onSave(campaign); }; return (<div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"><AppCard className="p-8 max-w-2xl w-full animate-fade-in-up"><div className="flex justify-between items-start mb-6"><h3 className="text-2xl font-bold text-white font-poppins">{campaign.id ? 'Edit Campaign' : 'Create New Campaign'}</h3><AppButton onClick={onClose} variant="secondary" icon={XCircle} className="!p-2"/></div><div className="space-y-4"><AppInput type="text" name="title" value={campaign.title} onChange={handleInputChange} placeholder="Campaign Title"/><AppTextarea name="content" value={campaign.content} onChange={handleInputChange} placeholder="Campaign Content..." rows="5"></AppTextarea><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><AppSelect name="platform" value={campaign.platform} onChange={handleInputChange}>{Object.keys(PLATFORMS).map(p=><option key={p} value={p}>{PLATFORMS[p].name}</option>)}</AppSelect><AppSelect name="type" value={campaign.type} onChange={handleInputChange}><option>Visual</option><option>Video</option><option>Text</option><option>Community</option></AppSelect></div></div><div className="flex justify-end gap-3 mt-6"><AppButton onClick={handleSave} variant="primary">Save</AppButton></div></AppCard></div>);};
-
-
     return (
         <div>
             <ConfirmationModal 
@@ -347,7 +395,10 @@ const CampaignManager = ({ campaigns, setCampaigns, setNotification, setActiveTa
                     <AppButton onClick={() => setView('analytics')} variant={view === 'analytics' ? 'primary' : 'secondary'} icon={BarChart2}>Analytics</AppButton>
                 </div>
             </div>
-            {view === 'dashboard' && <DashboardView />}
+            {/* Render the correct view based on state */}
+            {view === 'dashboard' && <DashboardView campaigns={campaigns} handleCreateNew={handleCreateNew} handleEdit={handleEdit} handleDuplicate={handleDuplicate} handleDelete={handleDelete} />}
+            {/* {view === 'calendar' && <CalendarView />} */}
+            {/* {view === 'analytics' && <AnalyticsView />} */}
         </div>
     );
 };
@@ -374,11 +425,16 @@ const FilmScopeAI = () => {
             setNotification({ type: 'error', message: `Could not fetch campaigns: ${campaignError.message}`});
             console.error(campaignError);
         } else {
-            setCampaigns(campaignData);
+            setCampaigns(campaignData || []);
         }
         setIsLoading(false);
     }
-    fetchData();
+    if (supabase?.from) {
+        fetchData();
+    } else {
+        setIsLoading(false);
+        console.warn("Supabase client not configured. Skipping data fetch.");
+    }
   }, []);
 
   const handleDismissNotification = useCallback(() => {
@@ -390,7 +446,7 @@ const FilmScopeAI = () => {
     campaigns: { label: 'Campaign Manager', icon: Briefcase, component: <CampaignManager campaigns={campaigns} setCampaigns={setCampaigns} setNotification={setNotification} setActiveTab={setActiveTab} /> },
   };
   
-  // Font loading effect remains unchanged
+  // Font loading effect
   useEffect(() => {
     const poppinsLink = document.createElement('link');
     poppinsLink.href = "https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap";
