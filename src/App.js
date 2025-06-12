@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 // CORRECTED: Using a direct ESM import from a CDN for the interactive preview.
-// Your local build and Vercel deployment will correctly use the version from your package.json.
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'; 
+// IMPORTANT: This line MUST be changed back before deploying to Vercel. See instructions.
+import { createClient } from '@supabase/supabase-js';
 import { 
     ChevronLeft, ChevronRight, Search, Target, Bot, Zap, Film, BarChart2, Clapperboard, 
     Megaphone, Calendar, LayoutDashboard, Settings, Plus, Trash2, Edit, Copy, MoreVertical, 
@@ -15,21 +15,19 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 
 // --- SUPABASE & API CLIENT SETUP ---
 
-// IMPORTANT: These variables will be pulled from your Vercel environment settings during deployment.
+// These variables are loaded from your Vercel project's Environment Variables settings.
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 const geminiApiKey = process.env.REACT_APP_GEMINI_API_KEY;
 
-// Initialize Supabase client
-// Note: This will not function in the preview without valid keys. It is set up for a real deployment.
-export const supabase = (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey) : {};
-
+// Initialize Supabase client. This requires valid keys to function.
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // --- GEMINI API HELPER ---
 const callGeminiApi = async (prompt, isJson = false) => {
     if (!geminiApiKey) {
         console.error("Gemini API key is missing.");
-        return { error: "Gemini API key not configured." };
+        return null;
     }
     
     const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
@@ -67,7 +65,7 @@ const callGeminiApi = async (prompt, isJson = false) => {
 
     } catch (error) {
         console.error("Error calling Gemini API:", error);
-        return { error: error.message };
+        return null;
     }
 };
 
@@ -128,10 +126,10 @@ const AudienceAnalysis = ({ filmData, setFilmData, setNotification }) => {
       5. "metaTargeting": An object with two keys: "interests" (an array of 10-15 strings for Meta Ads interest targeting) and "behaviors" (an array of 5-7 strings for Meta Ads behavior/demographic targeting).
     `;
     const result = await callGeminiApi(prompt, true);
-    if (result && !result.error) {
+    if (result) {
         setAnalysis(result);
     } else {
-        setNotification({ type: 'error', message: result?.error || 'Failed to get analysis from AI.' });
+        setNotification({ type: 'error', message: 'Failed to get analysis from AI.' });
     }
     setLoading(false);
   };
@@ -216,9 +214,17 @@ const CampaignManager = ({ campaigns, setCampaigns, setNotification, setActiveTa
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
     const handleCreateNew = () => { 
-        setEditingCampaign({ title: '', content: '', platform: 'instagram', type: 'Visual', status: 'Draft', meta_ad_status: 'Not Promoted' }); 
+        setEditingCampaign({ 
+            title: '', 
+            content: '', 
+            platform: 'instagram', 
+            type: 'Visual', 
+            status: 'Draft', 
+            meta_ad_status: 'Not Promoted'
+        }); 
         setShowEditModal(true); 
     };
+
     const handleEdit = (campaign) => { setEditingCampaign(campaign); setShowEditModal(true); };
     
     const handleDelete = (campaign) => {
@@ -227,7 +233,6 @@ const CampaignManager = ({ campaigns, setCampaigns, setNotification, setActiveTa
             title: "Delete Campaign",
             message: `Are you sure you want to delete the campaign "${campaign.title}"? This action cannot be undone.`,
             onConfirm: async () => {
-                if(!supabase.from) { setNotification({type: 'error', message: 'Supabase not configured.'}); return; }
                 const { error } = await supabase.from('campaigns').delete().match({ id: campaign.id });
                 if (error) {
                     setNotification({ type: 'error', message: `Error deleting campaign: ${error.message}` });
@@ -241,9 +246,12 @@ const CampaignManager = ({ campaigns, setCampaigns, setNotification, setActiveTa
     };
 
     const handleDuplicate = async (campaign) => {
-        if(!supabase.from) { setNotification({type: 'error', message: 'Supabase not configured.'}); return; }
         const { id, created_at, ...original } = campaign;
-        const newCampaign = { ...original, title: `${original.title} (Copy)`, status: 'Draft' };
+        const newCampaign = {
+            ...original,
+            title: `${original.title} (Copy)`,
+            status: 'Draft'
+        };
 
         const { data, error } = await supabase.from('campaigns').insert([newCampaign]).select();
         if (error) {
@@ -255,15 +263,22 @@ const CampaignManager = ({ campaigns, setCampaigns, setNotification, setActiveTa
     };
     
     const handleSave = async (campaignToSave) => {
-        if(!supabase.from) { setNotification({type: 'error', message: 'Supabase not configured.'}); return; }
         if (campaignToSave.id) { 
             const { error } = await supabase.from('campaigns').update(campaignToSave).match({ id: campaignToSave.id });
-            if(error) { setNotification({ type: 'error', message: `Error updating: ${error.message}` }); } 
-            else { setCampaigns(prev => prev.map(c => c.id === campaignToSave.id ? campaignToSave : c)); setNotification({ type: 'success', message: 'Campaign updated!' }); }
+            if(error) {
+                setNotification({ type: 'error', message: `Error updating campaign: ${error.message}` });
+            } else {
+                setCampaigns(prev => prev.map(c => c.id === campaignToSave.id ? campaignToSave : c));
+                setNotification({ type: 'success', message: 'Campaign updated!' });
+            }
         } else { 
             const { data, error } = await supabase.from('campaigns').insert([campaignToSave]).select();
-            if(error) { setNotification({ type: 'error', message: `Error creating: ${error.message}` }); } 
-            else { setCampaigns(prev => [data[0], ...prev]); setNotification({ type: 'success', message: 'Campaign created as a draft!' }); }
+            if(error) {
+                setNotification({ type: 'error', message: `Error creating campaign: ${error.message}` });
+            } else {
+                setCampaigns(prev => [data[0], ...prev]);
+                setNotification({ type: 'success', message: 'Campaign created as a draft!' });
+            }
         } 
         setShowEditModal(false); 
         setEditingCampaign(null); 
@@ -300,23 +315,36 @@ const CampaignManager = ({ campaigns, setCampaigns, setNotification, setActiveTa
                    </div>
                 </AppCard>
           </div>
-          <AppCard className="p-6"><h3 className="font-bold text-lg text-white mb-4 flex items-center font-poppins"><Bot className="mr-2"/> AI Optimization Engine</h3></AppCard>
+          <AppCard className="p-6">
+            <h3 className="font-bold text-lg text-white mb-4 flex items-center font-poppins"><Bot className="mr-2"/> AI Optimization Engine</h3>
+          </AppCard>
         </div>
       );
-      
     const CampaignEditModal = ({ isOpen, onClose, onSave, campaignData, setNotification }) => { if (!isOpen || !campaignData) return null; const [campaign, setCampaign] = useState(campaignData); useEffect(() => { setCampaign(campaignData); }, [campaignData]); const handleInputChange = e => { const {name, value} = e.target; setCampaign(p => ({...p, [name]: value})); }; const handleSave = () => { if (!campaign.title || !campaign.content) { setNotification({type: 'error', message: 'Title and Content are required.'}); return; } onSave(campaign); }; return (<div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"><AppCard className="p-8 max-w-2xl w-full animate-fade-in-up"><div className="flex justify-between items-start mb-6"><h3 className="text-2xl font-bold text-white font-poppins">{campaign.id ? 'Edit Campaign' : 'Create New Campaign'}</h3><AppButton onClick={onClose} variant="secondary" icon={XCircle} className="!p-2"/></div><div className="space-y-4"><AppInput type="text" name="title" value={campaign.title} onChange={handleInputChange} placeholder="Campaign Title"/><AppTextarea name="content" value={campaign.content} onChange={handleInputChange} placeholder="Campaign Content..." rows="5"></AppTextarea><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><AppSelect name="platform" value={campaign.platform} onChange={handleInputChange}>{Object.keys(PLATFORMS).map(p=><option key={p} value={p}>{PLATFORMS[p].name}</option>)}</AppSelect><AppSelect name="type" value={campaign.type} onChange={handleInputChange}><option>Visual</option><option>Video</option><option>Text</option><option>Community</option></AppSelect></div></div><div className="flex justify-end gap-3 mt-6"><AppButton onClick={handleSave} variant="primary">Save</AppButton></div></AppCard></div>);};
 
 
     return (
         <div>
-            <ConfirmationModal isOpen={confirmModal.isOpen} title={confirmModal.title} message={confirmModal.message} onConfirm={confirmModal.onConfirm} onCancel={() => setConfirmModal({ isOpen: false })} />
-            <CampaignEditModal isOpen={showEditModal} onClose={() => setShowEditModal(false)} onSave={handleSave} campaignData={editingCampaign} setNotification={setNotification} />
+            <ConfirmationModal 
+                isOpen={confirmModal.isOpen} 
+                title={confirmModal.title} 
+                message={confirmModal.message} 
+                onConfirm={confirmModal.onConfirm} 
+                onCancel={() => setConfirmModal({ isOpen: false })} 
+            />
+            <CampaignEditModal 
+                isOpen={showEditModal} 
+                onClose={() => setShowEditModal(false)} 
+                onSave={handleSave} 
+                campaignData={editingCampaign} 
+                setNotification={setNotification} 
+            />
             <div className="flex items-center justify-between mb-8">
                 <SectionTitle icon={Briefcase}>Campaign Manager</SectionTitle>
                 <div className="flex items-center gap-2">
                     <AppButton onClick={() => setView('dashboard')} variant={view === 'dashboard' ? 'primary' : 'secondary'} icon={LayoutDashboard}>Dashboard</AppButton>
-                    <AppButton onClick={() => setView('calendar')} variant={view === 'calendar' ? 'primary' : 'secondary'} icon={Calendar} disabled>Calendar</AppButton>
-                    <AppButton onClick={() => setView('analytics')} variant={view === 'analytics' ? 'primary' : 'secondary'} icon={BarChart2} disabled>Analytics</AppButton>
+                    <AppButton onClick={() => setView('calendar')} variant={view === 'calendar' ? 'primary' : 'secondary'} icon={Calendar}>Calendar</AppButton>
+                    <AppButton onClick={() => setView('analytics')} variant={view === 'analytics' ? 'primary' : 'secondary'} icon={BarChart2}>Analytics</AppButton>
                 </div>
             </div>
             {view === 'dashboard' && <DashboardView />}
@@ -337,25 +365,16 @@ const FilmScopeAI = () => {
   useEffect(() => {
     const fetchData = async () => {
         setIsLoading(true);
-        if (supabase.from) {
-             const { data: campaignData, error: campaignError } = await supabase
-                .from('campaigns')
-                .select('*')
-                .order('created_at', { ascending: false });
-            
-            if (campaignError) {
-                setNotification({ type: 'error', message: `Could not fetch campaigns: ${campaignError.message}`});
-                console.error(campaignError);
-            } else {
-                setCampaigns(campaignData);
-            }
+        const { data: campaignData, error: campaignError } = await supabase
+            .from('campaigns')
+            .select('*')
+            .order('created_at', { ascending: false });
+        
+        if (campaignError) {
+            setNotification({ type: 'error', message: `Could not fetch campaigns: ${campaignError.message}`});
+            console.error(campaignError);
         } else {
-            setNotification({ type: 'info', message: 'Supabase is not configured. Displaying sample data.' });
-            // Load mock data if Supabase isn't configured for the preview
-            setCampaigns([
-                { id: 1, title: 'Sample Teaser Trailer', platform: 'youtube', type: 'Video', status: 'Active' },
-                { id: 2, title: 'Sample Poster Reveal', platform: 'instagram', type: 'Visual', status: 'Scheduled' },
-            ]);
+            setCampaigns(campaignData);
         }
         setIsLoading(false);
     }
@@ -371,7 +390,7 @@ const FilmScopeAI = () => {
     campaigns: { label: 'Campaign Manager', icon: Briefcase, component: <CampaignManager campaigns={campaigns} setCampaigns={setCampaigns} setNotification={setNotification} setActiveTab={setActiveTab} /> },
   };
   
-  // Font loading effect
+  // Font loading effect remains unchanged
   useEffect(() => {
     const poppinsLink = document.createElement('link');
     poppinsLink.href = "https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap";
