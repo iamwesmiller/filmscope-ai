@@ -189,14 +189,16 @@ const ConfidenceBar = ({ value }) => (
 );
 
 const Notification = ({ message, type, onDismiss }) => { 
-  if (!message) return null; 
   const icons = { success: CheckCircle, error: XCircle, info: Info }; 
   const Icon = icons[type]; 
   
   useEffect(() => { 
+    if (!message) return;
     const timer = setTimeout(onDismiss, 4000); 
     return () => clearTimeout(timer); 
-  }, [onDismiss]); 
+  }, [onDismiss, message]); 
+
+  if (!message) return null; 
   
   return ( 
     <div className="fixed top-20 right-8 z-50 animate-fade-in-down"> 
@@ -486,11 +488,12 @@ const CampaignManager = ({ campaigns, setCampaigns, setNotification, setActiveTa
   );
 
   const CampaignEditModal = ({ isOpen, onClose, onSave, campaignData, setNotification }) => { 
-    if (!isOpen || !campaignData) return null; 
-    const [campaign, setCampaign] = useState(campaignData); 
+    const [campaign, setCampaign] = useState(campaignData || { title: '', content: '', platform: 'instagram', type: 'Visual', status: 'Draft' }); 
     
     useEffect(() => { 
-      setCampaign(campaignData); 
+      if (campaignData) {
+        setCampaign(campaignData); 
+      }
     }, [campaignData]); 
     
     const handleInputChange = e => { 
@@ -505,6 +508,8 @@ const CampaignManager = ({ campaigns, setCampaigns, setNotification, setActiveTa
       } 
       onSave(campaign); 
     }; 
+
+    if (!isOpen || !campaignData) return null; 
     
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
