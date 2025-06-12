@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-// Corrected: Using a direct ESM import from a CDN to resolve the module in this environment.
-// This is necessary for the preview to work. Your local build will still use the npm package.
+// CORRECTED: Using a direct ESM import from a CDN for the interactive preview.
+// Your local build and Vercel deployment will correctly use the version from your package.json.
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'; 
 import { 
     ChevronLeft, ChevronRight, Search, Target, Bot, Zap, Film, BarChart2, Clapperboard, 
@@ -15,19 +15,13 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 
 // --- SUPABASE & API CLIENT SETUP ---
 
-// IMPORTANT: Create a .env.local file in your project's root
-// and add your Supabase credentials and Gemini API key.
-// REACT_APP_SUPABASE_URL=YOUR_SUPABASE_URL
-// REACT_APP_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
-// REACT_APP_GEMINI_API_KEY=YOUR_GEMINI_API_KEY
-
+// IMPORTANT: These variables will be pulled from your Vercel environment settings during deployment.
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 const geminiApiKey = process.env.REACT_APP_GEMINI_API_KEY;
 
 // Initialize Supabase client
-// Note: This initialization may not work fully in preview without valid keys.
-// It is set up for a real deployment environment.
+// Note: This will not function in the preview without valid keys. It is set up for a real deployment.
 export const supabase = (supabaseUrl && supabaseAnonKey) ? createClient(supabaseUrl, supabaseAnonKey) : {};
 
 
@@ -35,8 +29,7 @@ export const supabase = (supabaseUrl && supabaseAnonKey) ? createClient(supabase
 const callGeminiApi = async (prompt, isJson = false) => {
     if (!geminiApiKey) {
         console.error("Gemini API key is missing.");
-        // Return a mock error response for the UI
-        return { error: "Gemini API key is not configured." };
+        return { error: "Gemini API key not configured." };
     }
     
     const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`;
@@ -275,7 +268,7 @@ const CampaignManager = ({ campaigns, setCampaigns, setNotification, setActiveTa
         setShowEditModal(false); 
         setEditingCampaign(null); 
     };
-
+    
     const DashboardView = () => (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2 space-y-6">
@@ -309,7 +302,7 @@ const CampaignManager = ({ campaigns, setCampaigns, setNotification, setActiveTa
           </div>
           <AppCard className="p-6"><h3 className="font-bold text-lg text-white mb-4 flex items-center font-poppins"><Bot className="mr-2"/> AI Optimization Engine</h3></AppCard>
         </div>
-    );
+      );
       
     const CampaignEditModal = ({ isOpen, onClose, onSave, campaignData, setNotification }) => { if (!isOpen || !campaignData) return null; const [campaign, setCampaign] = useState(campaignData); useEffect(() => { setCampaign(campaignData); }, [campaignData]); const handleInputChange = e => { const {name, value} = e.target; setCampaign(p => ({...p, [name]: value})); }; const handleSave = () => { if (!campaign.title || !campaign.content) { setNotification({type: 'error', message: 'Title and Content are required.'}); return; } onSave(campaign); }; return (<div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"><AppCard className="p-8 max-w-2xl w-full animate-fade-in-up"><div className="flex justify-between items-start mb-6"><h3 className="text-2xl font-bold text-white font-poppins">{campaign.id ? 'Edit Campaign' : 'Create New Campaign'}</h3><AppButton onClick={onClose} variant="secondary" icon={XCircle} className="!p-2"/></div><div className="space-y-4"><AppInput type="text" name="title" value={campaign.title} onChange={handleInputChange} placeholder="Campaign Title"/><AppTextarea name="content" value={campaign.content} onChange={handleInputChange} placeholder="Campaign Content..." rows="5"></AppTextarea><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><AppSelect name="platform" value={campaign.platform} onChange={handleInputChange}>{Object.keys(PLATFORMS).map(p=><option key={p} value={p}>{PLATFORMS[p].name}</option>)}</AppSelect><AppSelect name="type" value={campaign.type} onChange={handleInputChange}><option>Visual</option><option>Video</option><option>Text</option><option>Community</option></AppSelect></div></div><div className="flex justify-end gap-3 mt-6"><AppButton onClick={handleSave} variant="primary">Save</AppButton></div></AppCard></div>);};
 
@@ -326,7 +319,7 @@ const CampaignManager = ({ campaigns, setCampaigns, setNotification, setActiveTa
                     <AppButton onClick={() => setView('analytics')} variant={view === 'analytics' ? 'primary' : 'secondary'} icon={BarChart2} disabled>Analytics</AppButton>
                 </div>
             </div>
-            <DashboardView />
+            {view === 'dashboard' && <DashboardView />}
         </div>
     );
 };
